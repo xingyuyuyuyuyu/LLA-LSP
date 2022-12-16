@@ -1,0 +1,89 @@
+#library
+library(glmnet)
+
+#LLA-LSP  functions
+llasls<- function(x,y,lambda1=.5,lambda2=.5,c=.5){
+  n=dim(x)[1] ; p=dim(x)[2]; a=3.7
+  cvfit <- cv.glmnet(x,y,alpha=1,tandardize = FALSE,intercept = FALSE)
+  lasso <- glmnet(x,y,alpha=1,lambda=cvfit$lambda.min,standardize = FALSE,intercept = FALSE)
+  betahat0<-as.matrix(coefficients(lasso)[-1]) 
+  k=0; l2=1; coef0 <- betahat0; coef <- rep(0,p)
+  
+  A <- matrix(1,p,p); A[cor(x)<c] <- 0; D <- diag(apply(abs(A), 1, sum))
+  L1 <- D-A; svdl1 <-svd(L1); L <- svdl1$u %*% diag(sqrt(svdl1$d)) %*% t(svdl1$v)
+  ynew <- c(y,rep(0,p))
+
+  while(l2>1e-4){
+    coef <- coef0
+    
+    coef<-coef0;cc<-coef;lam<-lambda1
+    if(length(cc[abs(cc)>lam])!=0){
+      cc<-abs(cc[abs(cc)>lam]);cc<-(abs(a*lam-cc)+(a*lam-cc))/(2*(a-1))+1e-10
+      w<-coef;w[abs(w)>lam]<-lam/cc}
+    if(length(cc[abs(cc)>lam])==0) w<-coef
+    w[abs(w)<=lam]<-1;
+    w0 <- matrix(0,p,p);diag(w0)<-w;x1<-x%*%w0
+    
+    xnew <- rbind(x1,sqrt(n * lambda2)*L%*%w0)
+    out2 <- glmnet(xnew, ynew, lambda = lambda1,standardize = FALSE,intercept = FALSE)
+    
+    coef0 <- coef(out2)[-1]*w
+    l2 <- mean(abs(coef-coef0))
+    k <- k + 1
+    if(k > 30) {
+      print(c(lambda1, lambda2))
+      break}
+  }
+  c1 = coef0
+  
+  esti = coef0
+  mse <- mean((y-x %*%esti)^2)
+  k <- sum(esti!=0)
+  l <- -(n/2)*log(2*pi)-(n/2)*log(mse)-n/2
+  bic <- -2*l + log(n)*k
+  
+  return(list(coef=c1,step=k,lambda=c(lambda1,lambda2),mse=mse,bic=bic))
+}
+
+##cross validation
+cvlambda_llasls <- function(x,y,lambda1,lambda2,folds = 5){
+  n <- nrow(x);p <- ncol(x)
+  lable <- sample(n,n);x <- x[lable, ]; y <- y[lable]
+  folds0 <- matrix(1:folds)
+  mse0 <- apply(folds0, 1, fold_llasls,x,y,lambda1,lambda2,folds)
+  mse <- mean(mse0)
+  return(mse)
+}
+
+fold_llasls<-function(i,x,y,lambda1,lambda2,l){#s:lambda,l=10
+  l = dim(x)[1]/l
+  index <- ((i-1)*l+1):(i*l)
+  coef <- llasls(x[-index,],y[-index],lambda1,lambda2,c=c)$coef
+  mse <- mean((y[index]-x[index,]%*%coef)^2)
+  return(mse)
+}
+
+cv.llasls<-function(x,y,m=10,folds = 5,c=.7){
+  #lambda_max1 <- max(abs(t(x)%*%y)/sqrt(n));lambda_min1 <- lambda_max1 *1e-4
+  lambda_max1 <- 10;lambda_min1 <- 0.01
+  lambda1_list<-exp(seq(log(lambda_min1), log(lambda_max1), length=m)) 
+  #lambda_max2 <- max(abs(t(x)%*%y)/sqrt(n));lambda_min2 <- lambda_max1 *1e-4
+  lambda_max2 <- 10;lambda_min2 <- 0.1
+  lambda2_list <- exp(seq(log(lambda_min2),log(lambda_max2),length=m))
+  
+  mse_matrix <- matrix(NA,m,m)
+  for (i in 1:m) {
+    for (j in 1:m) {
+      lambda1 <- lambda1_list[i];lambda2 <- lambda2_list[j]
+      mse_matrix[i,j] <- cvlambda_llasls(x,y,lambda1,lambda2,folds = 5)
+    }
+  }
+  
+  min_mse<-min(mse_matrix)
+  chosen <- which(mse_matrix==min_mse,arr.ind=T)
+  lambda1_chonsen <- lambda1_list[chosen[1]] 
+  lambda2_chonsen <- lambda2_list[chosen[2]]
+  lambda_chonsen<-c(lambda1_chonsen,lambda2_chonsen)
+  return(lambda_chonsen)
+}
+
