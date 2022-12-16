@@ -64,11 +64,10 @@ fold_llasls<-function(i,x,y,lambda1,lambda2,l){#s:lambda,l=10
 }
 
 cv.llasls<-function(x,y,m=10,folds = 5,c=.7){
-  #lambda_max1 <- max(abs(t(x)%*%y)/sqrt(n));lambda_min1 <- lambda_max1 *1e-4
-  lambda_max1 <- 10;lambda_min1 <- 0.01
+  #lambda_max1 <- 10;lambda_min1 <- 0.01;lambda_max2 <- 10;lambda_min2 <- 0.1
+  lambda_max1 <- max(abs(t(x)%*%y)/sqrt(n));lambda_min1 <- lambda_max1 *1e-4
+  lambda_max2 <- max(abs(t(x)%*%y)/sqrt(n));lambda_min2 <- lambda_max1 *1e-4
   lambda1_list<-exp(seq(log(lambda_min1), log(lambda_max1), length=m)) 
-  #lambda_max2 <- max(abs(t(x)%*%y)/sqrt(n));lambda_min2 <- lambda_max1 *1e-4
-  lambda_max2 <- 10;lambda_min2 <- 0.1
   lambda2_list <- exp(seq(log(lambda_min2),log(lambda_max2),length=m))
   
   mse_matrix <- matrix(NA,m,m)
