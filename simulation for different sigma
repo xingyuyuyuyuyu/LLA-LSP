@@ -1,0 +1,68 @@
+#simulation for different sigma
+sd_list=c(1,2.5,5.0,7.5,10)
+n = 100*(2^(1-1));p = 2*n; b = p/q
+repeat_number = 100;sigma_kind = i
+MMM <- list()
+
+for (ii in 1:5) {
+  sd0=sd_list[ii]
+  x <- generate_x(q, b, n, r, sigma_kind)
+  y <- x %*% beta + rnorm(n,mean = 0, sd = sd0)
+  
+  #choose  parameter  
+  m=10 #参数个数
+  lambda_scad <-cv.ncvreg(x,y,nfolds = 5,penalty = "SCAD", trace = F)$lambda.min
+  lambda_elanet <-cv.elanet(x,y,m)
+  lambda_sls <- cv.mcpsls(x,y,m,folds = 5,c=c)
+  lambda_llasls <- cv.llasls(x,y,m,folds = 5,c=c)
+  
+  result_scad <- matrix(NA,repeat_number,7)
+  result_elanet <- matrix(NA,repeat_number,7)
+  result_sls <- matrix(NA,repeat_number,7)
+  result_llasls <- matrix(NA,repeat_number,7)
+  
+  scad_coef <- matrix(NA,repeat_number,p)
+  elanet_coef <- matrix(NA,repeat_number,p)
+  sls_coef <- matrix(NA,repeat_number,p)
+  llasls_coef <- matrix(NA,repeat_number,p)
+  
+  for (kk in 1:repeat_number) {
+    x <- generate_x(q, b, n, r, sigma_kind)
+    y <- x %*% beta + rnorm(n,mean = 0, sd = sd0)
+    
+    # model
+    sls_model <- MCP_SLS(d=lambda_sls,x,y,c)
+    llasls_model <- llasls(x,y,lambda1 = lambda_llasls[1],
+                           lambda2 = lambda_llasls[2],c=c)
+    elasticnet <- glmnet(x, y,alpha= lambda_elanet[1], lambda =  lambda_elanet[2],
+                         tandardize = FALSE,intercept = FALSE)
+    betahat_elasticnet <- as.numeric(coef(elasticnet)[-1])
+    betahat_scad <- ncvfit(x,y,penalty = "SCAD", lambda =lambda_scad)$beta
+
+    #result
+    result_scad[kk,] <- resultevaluate(beta,betahat_scad)
+    result_elanet[kk,] <- resultevaluate(beta,betahat_elasticnet)
+    result_sls[kk,]  <- resultevaluate(beta,sls_model$coef)
+    result_llasls[kk,] <- resultevaluate(beta,llasls_model$coef)
+  }
+  
+  margin=2
+  mean_sls <- apply(result_sls, margin, mean)
+  mean_llasls <- apply(result_llasls, margin, mean)
+  mean_elanet <- apply(result_elanet, margin, mean)
+  mean_scad <- apply(result_scad, margin, mean)
+  mean <- cbind(mean_scad,mean_elanet,mean_sls, mean_llasls)
+  
+  sd_sls <- apply(result_sls, margin, sd)
+  sd_llasls <- apply(result_llasls, margin, sd)
+  sd_elanet <- apply(result_elanet, margin, sd)
+  sd_scad <- apply(result_scad, margin, sd)
+  sd <- cbind(sd_scad,sd_elanet,sd_sls, sd_llasls,sd_elanet)
+  evaluateresult <- cbind(mean,sd)
+  
+  MMM[[ii]] <- t(evaluateresult)
+  print(ii)
+}
+MMM
+
+
