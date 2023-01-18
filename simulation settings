@@ -1,0 +1,36 @@
+#generate x
+generate_x<- function(q, b, n, r, sigma_kind){
+  mu <- rep(0,q*b) 
+  
+  if (sigma_kind == 1)    {
+    Sigma <- matrix(r, ncol=q,nrow=q) ; diag(Sigma) <- 1
+    Sigmas <- as.matrix(bdiag(lapply(1:b,function(o) Sigma))) 
+  }
+  
+  if (sigma_kind == 2) {
+    Sigma<- matrix(0,q,q)
+    for (i in 1:q) {
+      for (j in 1:q) {
+        Sigma[i,j]<-r^(abs(i-j))
+      } }
+    Sigmas <- as.matrix(bdiag(lapply(1:b,function(o) Sigma))) 
+  }
+  
+  x <- mvrnorm(n=n,mu=mu, Sigma=Sigmas)
+
+  }
+  return(x)
+}
+
+#simulation for example 1
+i=1;r = 0.85;c = 0.7;q = 10
+beta <- c(rep(10,q),rep(10,q),rep(0,p-2*q))
+
+#simulation for example 2 & 3
+i=2;r = 0.99;c = 0.85;q = 5
+beta <- c(rep(10,q),rep(10,q),rep(0,p-2*q))
+
+#simulation for example 3
+i=2;r = 0.99;c = 0.85;q = 5
+beta <- c(rep(5,q),rep(-5,q),rep(0,p-2*q)) 
+
