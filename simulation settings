@@ -34,3 +34,18 @@ beta <- c(rep(10,q),rep(10,q),rep(0,p-2*q))
 i=2;r = 0.99;c = 0.85;q = 5
 beta <- c(rep(5,q),rep(-5,q),rep(0,p-2*q)) 
 
+#evaluate
+resultevaluate <- function(beta,betahat){
+  p <- length(beta)
+  l1err <- sum(abs(beta-betahat))
+  l2err <- sqrt(sum((beta-betahat)^2))
+  choosen <-as.numeric(betahat!=0)
+  NZ <- sum(choosen)
+  true <- as.numeric(beta!=0)
+  q <- sum(true)
+  TPR = sum(choosen==1 & true==1)/q
+  TNR = sum(choosen==0 & true==0)/(p-q)
+  FPR = sum(choosen==1 & true==0)/(p-q)
+  FNR = sum(choosen==0 & true==1)/q
+  return(c(l1err,l2err,NZ,TPR,TNR,FPR,FNR))
+}
